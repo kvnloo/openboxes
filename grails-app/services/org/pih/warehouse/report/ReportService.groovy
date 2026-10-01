@@ -662,9 +662,11 @@ class ReportService implements ApplicationContextAware {
 
     def refreshProductDemandData() {
         List statements = [
+                // Clean up leftovers from an interrupted prior rebuild without touching the live table.
                 "DROP TABLE IF EXISTS product_demand_details_tmp;",
+                "DROP TABLE IF EXISTS product_demand_details_old;",
                 """CREATE TABLE product_demand_details_tmp AS
-                    SELECT 
+                    SELECT
                         request_id,
                         request_status,
                         request_number,
@@ -688,13 +690,18 @@ class ReportService implements ApplicationContextAware {
                         reason_code,
                         reason_code_classification
                     FROM product_demand;""",
-                "DROP TABLE IF EXISTS product_demand_details;",
+                // Fully prepare the replacement before the live table is touched.
+                "ALTER TABLE product_demand_details_tmp ADD INDEX (product_id, origin_id, destination_id, date_issued, date_requested);",
+                // Bootstrap/recovery guard: the normal migration already creates the live table.
                 "CREATE TABLE IF NOT EXISTS product_demand_details LIKE product_demand_details_tmp;",
-                "TRUNCATE product_demand_details;",
-                "INSERT INTO product_demand_details SELECT * FROM product_demand_details_tmp;",
-                "ALTER TABLE product_demand_details ADD INDEX (product_id, origin_id, destination_id, date_issued, date_requested)"
+                // MySQL/MariaDB performs a multi-table RENAME atomically.
+                """RENAME TABLE
+                    product_demand_details TO product_demand_details_old,
+                    product_demand_details_tmp TO product_demand_details;""",
+                // A failure here leaves the new live table intact; the next rebuild cleans this backup first.
+                "DROP TABLE product_demand_details_old;"
         ]
-        dataService.executeStatements(statements)
+        dataService.executeStatementsFailFast(statements)
     }
 
     List getOnOrderSummary(Location location) {
