@@ -75,6 +75,31 @@ class DataService {
 
 
     /**
+     * Execute a sequence that must stop at the first failed statement.
+     *
+     * This is intentionally not wrapped in a transaction: MySQL/MariaDB DDL
+     * implicitly commits. Callers that rebuild tables should construct the
+     * replacement first and use an atomic RENAME TABLE for the live swap.
+     */
+    void executeStatementsFailFast(List statementList, Boolean logStatements = true) {
+        Sql sql = new Sql(dataSource)
+        try {
+            statementList.each { String statement ->
+                def startTime = System.currentTimeMillis()
+                log.info "Executing statement ${logStatements ? statement : ''}"
+                sql.execute(statement)
+                log.info "Updated ${sql.updateCount} rows in " + (System.currentTimeMillis() - startTime) + " ms"
+            }
+        } catch (Exception e) {
+            log.error("Error while executing statements: " + e.message, e)
+            throw e
+        } finally {
+            sql.close()
+        }
+    }
+
+
+    /**
      * Should use the apache library to handle this.
      * @param str
      * @return
