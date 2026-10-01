@@ -1426,6 +1426,7 @@ class JsonController {
         render(["aaData": data] as JSON)
     }
 
+    @Transactional(readOnly = true)
     def getTransactionReport(TransactionReportCommand command) {
         Date startDate = command.startDate
         Date endDate = command.endDate + 1
