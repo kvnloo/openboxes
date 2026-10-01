@@ -1424,6 +1424,12 @@ class ReportService implements ApplicationContextAware {
         return getFilteredTransactionEntries(transactionCodes, startDate, endDate, null, null, null, location, products, orderBy, sortOrder)
     }
 
+    List<TransactionEntry> getBackdatedTransactionEntries(List<TransactionEntry> transactionEntries) {
+        return transactionEntries.findAll { TransactionEntry entry ->
+            entry.transaction.dateCreated > (entry.transaction.transactionDate + 1)
+        }
+    }
+
     Map<Product, Map<String, Integer>> getDetailedTransactionReportData(Map<Product, List<TransactionEntry>> transactionEntries) {
         return transactionEntries.collectEntries { product, entriesForProduct ->
             Map<String, Integer> totalsByType = entriesForProduct
@@ -1582,12 +1588,8 @@ class ReportService implements ApplicationContextAware {
             Integer adjustments = closingBalance - openingBalance
 
             if (includeDetails) {
-                List<TransactionEntry> backdatedTransactionEntries = value.transaction
-                        .unique()
-                        .findAll {it.dateCreated > (it.transactionDate + 1) }
-                        .transactionEntries
-                        .flatten()
-                        .findAll { it.inventoryItem.product == key }
+                List<TransactionEntry> backdatedTransactionEntries =
+                        getBackdatedTransactionEntries(value)
 
                 return getTransactionReportDetailedRow(
                         productCode: key.productCode,
