@@ -203,6 +203,13 @@
 	</div>
 <script>
 
+    var transactionReportRequestInFlight = false;
+
+    function setTransactionReportRequestInFlight(inFlight) {
+        transactionReportRequestInFlight = inFlight;
+        $(".submit-button").prop("disabled", inFlight);
+    }
+
     function handleAjaxError(xhr, status, error) {
         if (status === 'timeout') {
             errorMessage('The server took too long to send the data.');
@@ -281,13 +288,29 @@
 					"data": aoData,
 					"success": fnCallback,
 					"timeout": ${grailsApplication.config.openboxes.ajaxRequest.timeout},
+					"beforeSend": function () {
+						setTransactionReportRequestInFlight(true);
+					},
+					"complete": function () {
+						setTransactionReportRequestInFlight(false);
+					},
 					"error": function (xhr, status, error) {
+						if (status === "timeout") {
+							alert(
+								"The transaction report timed out before the server returned data. " +
+								"The server may still be processing the request; wait before running the same report again."
+							);
+							destroyDataTable();
+							return;
+						}
+
+						// Navigating away or cancelling the browser request is not a server error.
+						if (status === "abort" || (xhr.readyState == 0 && xhr.status == 0)) {
+							return;
+						}
+
 						var message = "An unexpected error has occurred on the server. Please contact your system administrator.";
 						if (xhr.responseText) {
-							// User probably refreshed page or clicked on a link, so this isn't really an error
-							if (xhr.readyState == 0 || xhr.status == 0) {
-								return;
-							}
 							var errorMessage = JSON.parse(xhr.responseText).errorMessage;
 							if (errorMessage) {
 								message += "\n\n" + errorMessage
@@ -352,6 +375,11 @@
 
 		$(".submit-button").click(function(event){
 			event.preventDefault();
+
+			if (transactionReportRequestInFlight) {
+				return;
+			}
+
 			var today = new Date();
 			var locationId = $("#locationId").val();
 			var startDate = $("#startDate").val();
