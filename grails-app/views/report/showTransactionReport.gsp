@@ -281,20 +281,31 @@
 					"data": aoData,
 					"success": fnCallback,
 					"timeout": ${grailsApplication.config.openboxes.ajaxRequest.timeout},
+					"beforeSend": function () {
+						$(".submit-button").prop("disabled", true);
+					},
 					"error": function (xhr, status, error) {
 						var message = "An unexpected error has occurred on the server. Please contact your system administrator.";
-						if (xhr.responseText) {
-							// User probably refreshed page or clicked on a link, so this isn't really an error
-							if (xhr.readyState == 0 || xhr.status == 0) {
-								return;
-							}
-							var errorMessage = JSON.parse(xhr.responseText).errorMessage;
-							if (errorMessage) {
-								message += "\n\n" + errorMessage
+						if (status === "timeout") {
+							message = "The transaction report timed out. Try a shorter date range before retrying.";
+						} else if (xhr.readyState == 0 || xhr.status == 0) {
+							// Navigation or an explicit browser abort is not a report failure.
+							return;
+						} else if (xhr.responseText) {
+							try {
+								var errorMessage = JSON.parse(xhr.responseText).errorMessage;
+								if (errorMessage) {
+									message += "\n\n" + errorMessage
+								}
+							} catch (parseError) {
+								console.warn("Could not parse transaction report error response", parseError);
 							}
 						}
 						alert(message);
 						destroyDataTable();
+					},
+					"complete": function () {
+						$(".submit-button").prop("disabled", false);
 					}
 				})
 			},
