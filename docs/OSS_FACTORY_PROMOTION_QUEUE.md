@@ -18,6 +18,10 @@ Tracked via registry PR https://github.com/kvnloo/oss-factory/pull/191 (provisio
 - Downstream fork PRs https://github.com/kvnloo/openboxes/pull/1, /pull/2, /pull/3, /pull/4 are all **closed, unmerged**; original branches remain evidence only.
 - Avoid promoting overlapping #6201 retry prevention or aggregation paths while maintainers own them. Mark matching work `OWNER_COVERED` unless tests find a narrow independent regression.
 - Separate #6190 demand-table atomic refresh remains `CHECK`: MySQL/MariaDB DDL + integration tests pending.
+- **Verified merge order:** #6263 targets `release/0.9.9`; #6264 targets #6263's feature branch. Both currently have green GitHub Actions runs, but **review findings remain unresolved**.
+- #6263 unresolved: cross-scope PRODUCT_INVENTORY / INVENTORY baseline ties; locale bundle keys for Net Change; comparing the caller's `at=new Date()` to a later `now` (the suggested `!at.before(now)` alone still sends earlier `at` down the historical path).
+- #6264 unresolved: controller class-level `@Transactional` keeps the DB session open through rendering despite a read-only service annotation.
+- Avoid duplicate upstream comments for these already-filed Copilot review findings.
 - Next: review #6263/#6264 for unique correctness findings, run focused MariaDB/MySQL tests, and avoid duplicate PRs.
 
 ## Release gates
